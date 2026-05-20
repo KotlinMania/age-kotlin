@@ -5,11 +5,11 @@ Based on AST analysis, here are the concrete next steps.
 ## Summary
 
 - **Files Present:** 1/24 (4.2%)
-- **Function parity:** 1/369 matched (target 8) — 0.3%
+- **Function parity:** 5/369 matched (target 25) — 1.4%
 - **Class/type parity:** 4/82 matched (target 25) — 4.9%
-- **Combined symbol parity:** 5/451 matched (target 33) — 1.1%
-- **Average inline-code cosine:** 0.05 (function body across 1 matched files)
-- **Average documentation cosine:** 0.90 (doc text across 1 matched files)
+- **Combined symbol parity:** 9/451 matched (target 50) — 2.0%
+- **Average inline-code cosine:** 0.31 (function body across 1 matched files)
+- **Average documentation cosine:** 0.84 (doc text across 1 matched files)
 - **Cheat-zeroed Files:** 0
 - **Critical Issues:** 1 files with <0.60 function similarity
 
@@ -30,11 +30,11 @@ Every matched file is listed below with function and type symbol parity.
 ### 1. error
 
 - **Target:** `age.Error`
-- **Similarity:** 0.05
+- **Similarity:** 0.31
 - **Dependents:** 1
-- **Priority Score:** 1040909.5
-- **Functions:** 1/5 matched (target 8)
-- **Missing functions:** `fmt`, `source`, `from`, `clone`
+- **Priority Score:** 1000906.9
+- **Functions:** 5/5 matched (target 25)
+- **Missing functions:** _none_
 - **Types:** 4/4 matched (target 25)
 - **Missing types:** _none_
 
