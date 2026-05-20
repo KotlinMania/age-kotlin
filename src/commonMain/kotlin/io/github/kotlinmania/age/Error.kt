@@ -68,6 +68,20 @@ sealed class IdentityFileConvertError(message: String, cause: Throwable? = null)
             else -> "No identities found in file '$filename'."
         },
     )
+
+    /** Returns the underlying error, when this variant wraps one. */
+    fun source(): Throwable? =
+        when (this) {
+            is FailedToWriteOutput -> error
+            is IdentityFileContainsPlugin,
+            is NoIdentities,
+            -> null
+        }
+
+    /** Formats this error for display. */
+    fun fmt(): String = toString()
+
+    override fun toString(): String = message ?: super.toString()
 }
 
 /** Errors returned by a plugin. */
@@ -115,11 +129,19 @@ sealed class PluginError {
             }
         }
     }
+
+    /** Formats this error for display. */
+    fun fmt(): String = toString()
 }
 
 /** The various errors that can be returned during the encryption process. */
 sealed class EncryptError(message: String, cause: Throwable? = null) :
     Throwable(message, cause) {
+
+    companion object {
+        /** Lifts an I/O failure into an encryption error. */
+        fun from(error: Throwable): EncryptError = Io(error)
+    }
 
     /** An error occured while decrypting passphrase-encrypted identities. */
     class EncryptedIdentities(val source: DecryptError) :
@@ -194,11 +216,57 @@ sealed class EncryptError(message: String, cause: Throwable? = null) :
                 }
         }
     }
+
+    /** Creates an equivalent error value. */
+    fun clone(): EncryptError =
+        when (this) {
+            is EncryptedIdentities -> EncryptedIdentities(source.clone())
+            is IncompatibleRecipients -> IncompatibleRecipients(lLabels.toSet(), rLabels.toSet())
+            is InvalidRecipientLabels -> InvalidRecipientLabels(labels.toSet())
+            is Io -> Io(error)
+            is MissingPlugin -> MissingPlugin(binaryName)
+            MissingRecipients -> MissingRecipients
+            MixedRecipientAndPassphrase -> MixedRecipientAndPassphrase
+            is Plugin -> Plugin(errors.toList())
+        }
+
+    /** Returns the underlying error, when this variant wraps one. */
+    fun source(): Throwable? =
+        when (this) {
+            is EncryptedIdentities -> source
+            is Io -> error
+            is IncompatibleRecipients,
+            is InvalidRecipientLabels,
+            is MissingPlugin,
+            MissingRecipients,
+            MixedRecipientAndPassphrase,
+            is Plugin,
+            -> null
+        }
+
+    /** Formats this error for display. */
+    fun fmt(): String = toString()
+
+    override fun toString(): String = message ?: super.toString()
 }
 
 /** The various errors that can be returned during the decryption process. */
 sealed class DecryptError(message: String, cause: Throwable? = null) :
     Throwable(message, cause) {
+
+    companion object {
+        /** Maps an authenticated-decryption failure into the age decryption error. */
+        fun fromAuthenticatedDecryptionError(): DecryptError = DecryptionFailed
+
+        /** Lifts an I/O failure into a decryption error. */
+        fun from(error: Throwable): DecryptError = Io(error)
+
+        /** Maps a header MAC failure into the age decryption error. */
+        fun fromMacError(): DecryptError = InvalidMac
+
+        /** Maps an RSA failure into the age decryption error. */
+        fun fromRsaError(): DecryptError = DecryptionFailed
+    }
 
     /** The age file failed to decrypt. */
     object DecryptionFailed : DecryptError("Decryption failed")
@@ -263,6 +331,42 @@ sealed class DecryptError(message: String, cause: Throwable? = null) :
     object UnknownFormat : DecryptError(
         "Unknown age format.\nHave you tried upgrading to the latest version?",
     )
+
+    /** Creates an equivalent error value. */
+    fun clone(): DecryptError =
+        when (this) {
+            DecryptionFailed -> DecryptionFailed
+            is ExcessiveWork -> ExcessiveWork(required, target)
+            InvalidHeader -> InvalidHeader
+            InvalidMac -> InvalidMac
+            is Io -> Io(error)
+            KeyDecryptionFailed -> KeyDecryptionFailed
+            is MissingPlugin -> MissingPlugin(binaryName)
+            NoMatchingKeys -> NoMatchingKeys
+            is Plugin -> Plugin(errors.toList())
+            UnknownFormat -> UnknownFormat
+        }
+
+    /** Returns the underlying error, when this variant wraps one. */
+    fun source(): Throwable? =
+        when (this) {
+            is Io -> error
+            DecryptionFailed,
+            is ExcessiveWork,
+            InvalidHeader,
+            InvalidMac,
+            KeyDecryptionFailed,
+            is MissingPlugin,
+            NoMatchingKeys,
+            is Plugin,
+            UnknownFormat,
+            -> null
+        }
+
+    /** Formats this error for display. */
+    fun fmt(): String = toString()
+
+    override fun toString(): String = message ?: super.toString()
 }
 
 private fun printLabels(labels: Set<String>): String = buildString {
