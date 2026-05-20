@@ -1,32 +1,33 @@
-// port-lint: source src/error.rs
+// port-lint: source error.rs
 package io.github.kotlinmania.age
 
 /**
  * Error type.
  *
- * The upstream Rust error types delegate their `Display` impls to the `wfl!` / `wlnfl!`
- * macros, which resolve to localized strings out of the `i18n/<locale>/age.ftl` Fluent
- * bundle. There is no i18n sibling in the kotlinmania workspace yet, so the English text
- * from `i18n/en-US/age.ftl` is inlined directly into each variant's [Throwable.message]
- * here. When an i18n port lands, callers will be able to route through that instead.
+ * The upstream Rust error types delegate their display text to localized formatting
+ * helpers, which resolve to strings out of the `i18n/<locale>/age.ftl` Fluent bundle.
+ * There is no i18n sibling in the kotlinmania workspace yet, so the English text from
+ * `i18n/en-US/age.ftl` is inlined directly into each variant's [Throwable.message] here.
+ * When an i18n port lands, callers will be able to route through that instead.
  *
- * Upstream uses `std::io::Error` to carry I/O failures (kind + message + cause). Kotlin's
- * stdlib does not have a portable analog, so the [EncryptError.Io] and [DecryptError.Io]
- * variants below carry a plain [Throwable]. Cloning an I/O failure in upstream rebuilds
- * it from kind+message; Kotlin shares the [Throwable] by reference instead.
+ * Upstream uses the Rust standard I/O error type to carry I/O failures (kind + message +
+ * cause). Kotlin's stdlib does not have a portable analog, so the [EncryptError.Io] and
+ * [DecryptError.Io] variants below carry a plain [Throwable]. Cloning an I/O failure in
+ * upstream rebuilds it from kind and message; Kotlin shares the [Throwable] by reference
+ * instead.
  *
- * The upstream `From<chacha20poly1305::aead::Error>`, `From<hmac::digest::MacError>` and
- * `From<rsa::errors::Error>` conversions on [DecryptError] desugar Rust's `?` operator
- * across crypto crates. Kotlin has no implicit conversion trait, so call sites that
- * previously relied on `?` construct the appropriate [DecryptError] variant directly
- * ([DecryptError.DecryptionFailed], [DecryptError.InvalidMac], etc.). Those construction
- * idioms live with the crypto call sites, not in this file.
+ * The upstream conversion implementations from the authenticated-encryption error, HMAC
+ * MAC error, and RSA error to [DecryptError] support early-return error propagation across
+ * crypto crates. Kotlin has no implicit conversion trait, so call sites construct the
+ * appropriate [DecryptError] variant directly ([DecryptError.DecryptionFailed],
+ * [DecryptError.InvalidMac], etc.). Those construction idioms live with the crypto call
+ * sites, not in this file.
  *
  * The plugin-feature variants ([PluginError], [IdentityFileConvertError.IdentityFileContainsPlugin],
  * [EncryptError.MissingPlugin], [EncryptError.Plugin], [DecryptError.MissingPlugin] and
- * [DecryptError.Plugin]) were originally feature-gated behind `feature = "plugin"`. Kotlin
+ * [DecryptError.Plugin]) were originally gated behind the plugin Cargo feature. Kotlin
  * does not have crate features, so they are present unconditionally; the parsing
- * conversion from `age_core::format::Stanza` will land once `age-core` is ported.
+ * conversion from the age-core format stanza type will land once `age-core` is ported.
  */
 
 /** Errors returned when converting an identity file to a recipients file. */
