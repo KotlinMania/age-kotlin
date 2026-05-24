@@ -9,7 +9,7 @@ Based on AST analysis, here are the concrete next steps.
 - **Class/type parity:** 4/82 matched (target 25) — 4.9%
 - **Combined symbol parity:** 9/451 matched (target 50) — 2.0%
 - **Average inline-code cosine:** 0.31 (function body across 1 matched files)
-- **Average documentation cosine:** 0.84 (doc text across 1 matched files)
+- **Average documentation cosine:** 0.90 (doc text across 1 matched files)
 - **Cheat-zeroed Files:** 0
 - **Critical Issues:** 1 files with <0.60 function similarity
 
@@ -47,16 +47,6 @@ For each file to be considered "complete":
 - Documentation ported
 - port-lint header present
 
-## Next Commands
-
-```bash
-# Initialize task queue for systematic porting
-cd tools/ast_distance
-./ast_distance --init-tasks ../../tmp/age/src rust ../../src/commonMain/kotlin/io/github/kotlinmania/age kotlin tasks.json ../../AGENTS.md
-
-# Get next high-priority task
-./ast_distance --assign tasks.json <agent-id>
-```
 ## Reexport / Wiring Modules
 
 These files match `reexport_modules` patterns in `.ast_distance_config.json`. They are filtered out of
