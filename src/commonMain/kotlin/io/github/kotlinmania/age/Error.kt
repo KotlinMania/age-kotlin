@@ -1,7 +1,12 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 // port-lint: source error.rs
+
 package io.github.kotlinmania.age
 
-/**
+import kotlin.native.HiddenFromObjC
+
+/*
  * Error type.
  *
  * The upstream Rust error types delegate their display text to localized formatting
@@ -31,15 +36,18 @@ package io.github.kotlinmania.age
  */
 
 /** Errors returned when converting an identity file to a recipients file. */
-sealed class IdentityFileConvertError(message: String, cause: Throwable? = null) :
-    Throwable(message, cause) {
-
+@HiddenFromObjC
+sealed class IdentityFileConvertError(
+    message: String,
+    cause: Throwable? = null,
+) : Throwable(message, cause) {
     /**
      * An I/O error occurred while writing out a recipient corresponding to an identity
      * in this file.
      */
-    class FailedToWriteOutput(val error: Throwable) :
-        IdentityFileConvertError("Failed to write to output: $error", error)
+    class FailedToWriteOutput(
+        val error: Throwable,
+    ) : IdentityFileConvertError("Failed to write to output: $error", error)
 
     /**
      * The identity file contains a plugin identity, which can be converted to a
@@ -51,9 +59,9 @@ sealed class IdentityFileConvertError(message: String, cause: Throwable? = null)
         /** The name of the plugin. */
         val pluginName: String,
     ) : IdentityFileConvertError(
-        "Identity file '${filename ?: ""}' contains identities for 'age-plugin-$pluginName'.\n" +
-            "Try using 'age-plugin-$pluginName' to convert this identity to a recipient.",
-    )
+            "Identity file '${filename ?: ""}' contains identities for 'age-plugin-$pluginName'.\n" +
+                "Try using 'age-plugin-$pluginName' to convert this identity to a recipient.",
+        )
 
     /**
      * The identity file contains no identities, and thus cannot be used to produce a
@@ -63,11 +71,11 @@ sealed class IdentityFileConvertError(message: String, cause: Throwable? = null)
         /** The given identity file. */
         val filename: String?,
     ) : IdentityFileConvertError(
-        when (filename) {
-            null -> "No identities found in standard input."
-            else -> "No identities found in file '$filename'."
-        },
-    )
+            when (filename) {
+                null -> "No identities found in standard input."
+                else -> "No identities found in file '$filename'."
+            },
+        )
 
     /** Returns the underlying error, when this variant wraps one. */
     fun source(): Throwable? =
@@ -105,8 +113,7 @@ sealed class PluginError {
         /** The error message. */
         val message: String,
     ) : PluginError() {
-        override fun toString(): String =
-            "'$binaryName' couldn't use recipient $recipient: $message"
+        override fun toString(): String = "'$binaryName' couldn't use recipient $recipient: $message"
     }
 
     /** Some other error we don't know about. */
@@ -118,16 +125,17 @@ sealed class PluginError {
         /** The error message. */
         val message: String,
     ) : PluginError() {
-        override fun toString(): String = buildString {
-            append('(').append(kind)
-            for (d in metadata) {
-                append(' ').append(d)
+        override fun toString(): String =
+            buildString {
+                append('(').append(kind)
+                for (d in metadata) {
+                    append(' ').append(d)
+                }
+                append(')')
+                if (message.isNotEmpty()) {
+                    append(' ').append(message)
+                }
             }
-            append(')')
-            if (message.isNotEmpty()) {
-                append(' ').append(message)
-            }
-        }
     }
 
     /** Formats this error for display. */
@@ -135,17 +143,20 @@ sealed class PluginError {
 }
 
 /** The various errors that can be returned during the encryption process. */
-sealed class EncryptError(message: String, cause: Throwable? = null) :
-    Throwable(message, cause) {
-
+@HiddenFromObjC
+sealed class EncryptError(
+    message: String,
+    cause: Throwable? = null,
+) : Throwable(message, cause) {
     companion object {
         /** Lifts an I/O failure into an encryption error. */
         fun from(error: Throwable): EncryptError = Io(error)
     }
 
     /** An error occured while decrypting passphrase-encrypted identities. */
-    class EncryptedIdentities(val source: DecryptError) :
-        EncryptError(source.toString(), source)
+    class EncryptedIdentities(
+        val source: DecryptError,
+    ) : EncryptError(source.toString(), source)
 
     /** The encryptor was given recipients that declare themselves incompatible. */
     class IncompatibleRecipients(
@@ -155,7 +166,10 @@ sealed class EncryptError(message: String, cause: Throwable? = null) :
         val rLabels: Set<String>,
     ) : EncryptError(formatMessage(lLabels, rLabels)) {
         companion object {
-            internal fun formatMessage(lLabels: Set<String>, rLabels: Set<String>): String {
+            internal fun formatMessage(
+                lLabels: Set<String>,
+                rLabels: Set<String>,
+            ): String {
                 val lEmpty = lLabels.isEmpty()
                 val rEmpty = rLabels.isEmpty()
                 return when {
@@ -165,7 +179,9 @@ sealed class EncryptError(message: String, cause: Throwable? = null) :
                     lEmpty && !rEmpty ->
                         "Cannot encrypt to a recipient with labels '${printLabels(rLabels)}' alongside a recipient with no labels"
                     else ->
-                        "Cannot encrypt to a recipient with labels '${printLabels(lLabels)}' alongside a recipient with labels '${printLabels(rLabels)}'"
+                        "Cannot encrypt to a recipient with labels '${printLabels(
+                            lLabels,
+                        )}' alongside a recipient with labels '${printLabels(rLabels)}'"
                 }
             }
         }
@@ -177,21 +193,24 @@ sealed class EncryptError(message: String, cause: Throwable? = null) :
      *
      * Labels must be valid age "arbitrary string"s (`1*VCHAR` in ABNF).
      */
-    class InvalidRecipientLabels(val labels: Set<String>) :
-        EncryptError(
+    class InvalidRecipientLabels(
+        val labels: Set<String>,
+    ) : EncryptError(
             "The first recipient requires one or more invalid labels: '${printLabels(labels)}'",
         )
 
     /** An I/O error occurred during encryption. */
-    class Io(val error: Throwable) : EncryptError(error.toString(), error)
+    class Io(
+        val error: Throwable,
+    ) : EncryptError(error.toString(), error)
 
     /** A required plugin could not be found. */
     class MissingPlugin(
         /** The plugin's binary name. */
         val binaryName: String,
     ) : EncryptError(
-        "Could not find '$binaryName' on the PATH.\nHave you installed the plugin?",
-    )
+            "Could not find '$binaryName' on the PATH.\nHave you installed the plugin?",
+        )
 
     /** The encryptor was not given any recipients. */
     object MissingRecipients : EncryptError("Missing recipients.")
@@ -201,18 +220,21 @@ sealed class EncryptError(message: String, cause: Throwable? = null) :
         EncryptError("scrypt::Recipient can't be used with other recipients.")
 
     /** Errors from a plugin. */
-    class Plugin(val errors: List<PluginError>) : EncryptError(formatMessage(errors)) {
+    class Plugin(
+        val errors: List<PluginError>,
+    ) : EncryptError(formatMessage(errors)) {
         companion object {
             internal fun formatMessage(errors: List<PluginError>): String =
                 when (errors.size) {
                     0 -> error("empty plugin error list")
                     1 -> errors[0].toString()
-                    else -> buildString {
-                        append("Plugin returned multiple errors:\n")
-                        for (e in errors) {
-                            append("- ").append(e).append('\n')
+                    else ->
+                        buildString {
+                            append("Plugin returned multiple errors:\n")
+                            for (e in errors) {
+                                append("- ").append(e).append('\n')
+                            }
                         }
-                    }
                 }
         }
     }
@@ -251,9 +273,11 @@ sealed class EncryptError(message: String, cause: Throwable? = null) :
 }
 
 /** The various errors that can be returned during the decryption process. */
-sealed class DecryptError(message: String, cause: Throwable? = null) :
-    Throwable(message, cause) {
-
+@HiddenFromObjC
+sealed class DecryptError(
+    message: String,
+    cause: Throwable? = null,
+) : Throwable(message, cause) {
     companion object {
         /** Maps an authenticated-decryption failure into the age decryption error. */
         fun fromAuthenticatedDecryptionError(): DecryptError = DecryptionFailed
@@ -279,7 +303,10 @@ sealed class DecryptError(message: String, cause: Throwable? = null) :
         val target: UByte,
     ) : DecryptError(formatMessage(required, target)) {
         companion object {
-            internal fun formatMessage(required: UByte, target: UByte): String {
+            internal fun formatMessage(
+                required: UByte,
+                target: UByte,
+            ): String {
                 val duration = 1 shl (required.toInt() - target.toInt())
                 return "Excessive work parameter for passphrase.\n" +
                     "Decryption would take around $duration seconds."
@@ -294,7 +321,9 @@ sealed class DecryptError(message: String, cause: Throwable? = null) :
     object InvalidMac : DecryptError("Header MAC is invalid")
 
     /** An I/O error occurred during decryption. */
-    class Io(val error: Throwable) : DecryptError(error.toString(), error)
+    class Io(
+        val error: Throwable,
+    ) : DecryptError(error.toString(), error)
 
     /** Failed to decrypt an encrypted key. */
     object KeyDecryptionFailed : DecryptError("Failed to decrypt an encrypted key")
@@ -304,25 +333,28 @@ sealed class DecryptError(message: String, cause: Throwable? = null) :
         /** The plugin's binary name. */
         val binaryName: String,
     ) : DecryptError(
-        "Could not find '$binaryName' on the PATH.\nHave you installed the plugin?",
-    )
+            "Could not find '$binaryName' on the PATH.\nHave you installed the plugin?",
+        )
 
     /** None of the provided keys could be used to decrypt the age file. */
     object NoMatchingKeys : DecryptError("No matching keys found")
 
     /** Errors from a plugin. */
-    class Plugin(val errors: List<PluginError>) : DecryptError(formatMessage(errors)) {
+    class Plugin(
+        val errors: List<PluginError>,
+    ) : DecryptError(formatMessage(errors)) {
         companion object {
             internal fun formatMessage(errors: List<PluginError>): String =
                 when (errors.size) {
                     0 -> error("empty plugin error list")
                     1 -> errors[0].toString()
-                    else -> buildString {
-                        append("Plugin returned multiple errors:\n")
-                        for (e in errors) {
-                            append("- ").append(e).append('\n')
+                    else ->
+                        buildString {
+                            append("Plugin returned multiple errors:\n")
+                            for (e in errors) {
+                                append("- ").append(e).append('\n')
+                            }
                         }
-                    }
                 }
         }
     }
@@ -369,11 +401,12 @@ sealed class DecryptError(message: String, cause: Throwable? = null) :
     override fun toString(): String = message ?: super.toString()
 }
 
-private fun printLabels(labels: Set<String>): String = buildString {
-    for ((i, label) in labels.withIndex()) {
-        append(label)
-        if (i != 0) {
-            append(", ")
+private fun printLabels(labels: Set<String>): String =
+    buildString {
+        for ((i, label) in labels.withIndex()) {
+            append(label)
+            if (i != 0) {
+                append(", ")
+            }
         }
     }
-}
