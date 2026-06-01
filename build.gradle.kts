@@ -197,7 +197,7 @@ fun installProjectAndroidSdk(execOperations: ExecOperations) {
     println("setup-android-sdk: done; SDK at $projectAndroidSdkDir")
 }
 
-writeAndroidLocalProperties()
+installProjectAndroidSdk(serviceOf())
 
 val ensureAndroidSdk by tasks.registering {
     group = "setup"
@@ -426,8 +426,8 @@ val patchedKarmaWebpackPackage =
         .asFile.absolutePath
         .replace("\\", "/")
 
-// TODO: NodeJsRootExtension.versions.* is deprecated and will be removed when the spec-based
-//       NodeJsEnvSpec API gains equivalent properties. Track KGP release notes before removing.
+// NodeJsRootExtension.versions.* is deprecated; the spec-based NodeJsEnvSpec API
+// does not expose equivalent package-version pins in the Kotlin Gradle plugin version used here.
 rootProject.extensions.configure<NodeJsRootExtension>("kotlinNodeJs") {
     versions.webpack.version = providers.gradleProperty("node.webpack.version").getOrElse("5.106.2")
     versions.webpackCli.version = providers.gradleProperty("node.webpackCli.version").getOrElse("7.0.2")
