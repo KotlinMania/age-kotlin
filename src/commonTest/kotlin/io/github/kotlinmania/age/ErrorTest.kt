@@ -34,12 +34,13 @@ class ErrorTest {
             "Plugin returned multiple errors:\n" +
                 "- (plugin metadata) failed\n" +
                 "- 'age-plugin-demo' couldn't use an identity: denied\n",
-            EncryptError.Plugin(
-                listOf(
-                    PluginError.Other("plugin", listOf("metadata"), "failed"),
-                    PluginError.Identity("age-plugin-demo", "denied"),
-                ),
-            ).toString(),
+            EncryptError
+                .Plugin(
+                    listOf(
+                        PluginError.Other("plugin", listOf("metadata"), "failed"),
+                        PluginError.Identity("age-plugin-demo", "denied"),
+                    ),
+                ).toString(),
         )
     }
 

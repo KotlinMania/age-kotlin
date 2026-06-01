@@ -240,33 +240,27 @@ kotlin {
 
     val xcf = XCFramework(frameworkName)
 
-    // Local helper: attach this target's framework to the XCFramework.
-    // deploymentTarget follows Kotlin 2.3.0 raised minimums: iOS/tvOS→14.0, watchOS→7.0, macOS→11.0.
-    fun KotlinNativeTarget.addToXcf(
-        static: Boolean = false,
-        deploymentTarget: String,
-    ) {
+    fun KotlinNativeTarget.addToXcf(static: Boolean = false) {
         binaries.framework {
             baseName = frameworkName
             if (static) isStatic = true
             xcf.add(this)
-            binaryOption("deploymentTarget", deploymentTarget)
         }
     }
 
     // Apple — Tier 1/2 targets
-    macosArm64 { addToXcf(deploymentTarget = "11.0") }
-    iosArm64 { addToXcf(static = true, deploymentTarget = "14.0") }
-    iosSimulatorArm64 { addToXcf(static = true, deploymentTarget = "14.0") }
-    tvosArm64 { addToXcf(deploymentTarget = "14.0") }
-    tvosSimulatorArm64 { addToXcf(deploymentTarget = "14.0") }
-    watchosArm64 { addToXcf(deploymentTarget = "7.0") }
-    watchosDeviceArm64 { addToXcf(deploymentTarget = "7.0") }
-    watchosSimulatorArm64 { addToXcf(deploymentTarget = "7.0") }
+    macosArm64 { addToXcf() }
+    iosArm64 { addToXcf(static = true) }
+    iosSimulatorArm64 { addToXcf(static = true) }
+    tvosArm64 { addToXcf() }
+    tvosSimulatorArm64 { addToXcf() }
+    watchosArm64 { addToXcf() }
+    watchosDeviceArm64 { addToXcf() }
+    watchosSimulatorArm64 { addToXcf() }
 
     // iosX64: Intel Mac simulator. Tier 3 in Kotlin/Native but NOT deprecated —
     // Apple still ships x86_64 iOS simulator runtimes, so it is always built.
-    iosX64 { addToXcf(static = true, deploymentTarget = "14.0") }
+    iosX64 { addToXcf(static = true) }
 
     // Other native — Tier 1/2
     linuxX64()
@@ -687,34 +681,40 @@ tasks.register("swiftExportSmokeTest") {
 
     doLast {
         val execOperations = serviceOf<ExecOperations>()
-        val swiftBuildDir = layout.buildDirectory.dir("swift-test").get().asFile.absolutePath
-        execOperations.exec {
-            workingDir = projectDir
-            commandLine(
-                "./gradlew",
-                "embedSwiftExportForXcode",
-                "--no-configuration-cache",
-                "--no-daemon",
-                "--console=plain",
-            )
-            environment(
-                mapOf(
-                    "BUILT_PRODUCTS_DIR" to swiftBuildDir,
-                    "TARGET_BUILD_DIR" to swiftBuildDir,
-                    "SDK_NAME" to "macosx",
-                    "CONFIGURATION" to "Debug",
-                    "ARCHS" to "arm64",
-                    "FRAMEWORKS_FOLDER_PATH" to "Frameworks",
-                    "MACOSX_DEPLOYMENT_TARGET" to "14.0",
-                    "DEPLOYMENT_TARGET_SETTING_NAME" to "MACOSX_DEPLOYMENT_TARGET",
-                ),
-            )
-        }.assertNormalExitValue()
+        val swiftBuildDir =
+            layout.buildDirectory
+                .dir("swift-test")
+                .get()
+                .asFile.absolutePath
+        execOperations
+            .exec {
+                workingDir = projectDir
+                commandLine(
+                    "./gradlew",
+                    "embedSwiftExportForXcode",
+                    "--no-configuration-cache",
+                    "--no-daemon",
+                    "--console=plain",
+                )
+                environment(
+                    mapOf(
+                        "BUILT_PRODUCTS_DIR" to swiftBuildDir,
+                        "TARGET_BUILD_DIR" to swiftBuildDir,
+                        "SDK_NAME" to "macosx",
+                        "CONFIGURATION" to "Debug",
+                        "ARCHS" to "arm64",
+                        "FRAMEWORKS_FOLDER_PATH" to "Frameworks",
+                        "MACOSX_DEPLOYMENT_TARGET" to "14.0",
+                        "DEPLOYMENT_TARGET_SETTING_NAME" to "MACOSX_DEPLOYMENT_TARGET",
+                    ),
+                )
+            }.assertNormalExitValue()
 
-        execOperations.exec {
-            workingDir = layout.projectDirectory.dir("swift-test-harness").asFile
-            commandLine("swift", "test")
-        }.assertNormalExitValue()
+        execOperations
+            .exec {
+                workingDir = layout.projectDirectory.dir("swift-test-harness").asFile
+                commandLine("swift", "test")
+            }.assertNormalExitValue()
     }
 }
 
