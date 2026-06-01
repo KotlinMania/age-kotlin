@@ -1,4 +1,5 @@
 import org.gradle.api.GradleException
+import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.file.ArchiveOperations
 import org.gradle.api.file.FileSystemOperations
 import org.gradle.api.tasks.ClasspathNormalizer
@@ -39,6 +40,13 @@ version = providers.gradleProperty("project.version").getOrElse("0.1.0-SNAPSHOT"
 val frameworkName = providers.gradleProperty("project.frameworkName").getOrElse("Unnamed")
 val projectNamespace = providers.gradleProperty("project.namespace").getOrElse("io.github.kotlinmania")
 val kotlinVersion = providers.gradleProperty("versions.kotlin").getOrElse("2.3.21")
+val commonMainBundleName = providers.gradleProperty("project.dependencies.commonMainBundle").get()
+val commonMainDependencyBundle =
+    extensions
+        .getByType(VersionCatalogsExtension::class.java)
+        .named("libs")
+        .findBundle(commonMainBundleName)
+        .orElseThrow { GradleException("Missing libs bundle '$commonMainBundleName'") }
 
 // Opt-ins shared between the top-level compilerOptions and the codeqlCompileJvm kotlinc invocation.
 val commonOptIns =
@@ -197,7 +205,7 @@ fun installProjectAndroidSdk(execOperations: ExecOperations) {
     println("setup-android-sdk: done; SDK at $projectAndroidSdkDir")
 }
 
-installProjectAndroidSdk(serviceOf())
+writeAndroidLocalProperties()
 
 val ensureAndroidSdk by tasks.registering {
     group = "setup"
@@ -240,27 +248,33 @@ kotlin {
 
     val xcf = XCFramework(frameworkName)
 
-    fun KotlinNativeTarget.addToXcf(static: Boolean = false) {
+    // Local helper: attach this target's framework to the XCFramework.
+    // deploymentTarget follows Kotlin 2.3.0 raised minimums: iOS/tvOS→14.0, watchOS→7.0, macOS→11.0.
+    fun KotlinNativeTarget.addToXcf(
+        static: Boolean = false,
+        deploymentTarget: String,
+    ) {
         binaries.framework {
             baseName = frameworkName
             if (static) isStatic = true
             xcf.add(this)
+            binaryOption("deploymentTarget", deploymentTarget)
         }
     }
 
     // Apple — Tier 1/2 targets
-    macosArm64 { addToXcf() }
-    iosArm64 { addToXcf(static = true) }
-    iosSimulatorArm64 { addToXcf(static = true) }
-    tvosArm64 { addToXcf() }
-    tvosSimulatorArm64 { addToXcf() }
-    watchosArm64 { addToXcf() }
-    watchosDeviceArm64 { addToXcf() }
-    watchosSimulatorArm64 { addToXcf() }
+    macosArm64 { addToXcf(deploymentTarget = "11.0") }
+    iosArm64 { addToXcf(static = true, deploymentTarget = "14.0") }
+    iosSimulatorArm64 { addToXcf(static = true, deploymentTarget = "14.0") }
+    tvosArm64 { addToXcf(deploymentTarget = "14.0") }
+    tvosSimulatorArm64 { addToXcf(deploymentTarget = "14.0") }
+    watchosArm64 { addToXcf(deploymentTarget = "7.0") }
+    watchosDeviceArm64 { addToXcf(deploymentTarget = "7.0") }
+    watchosSimulatorArm64 { addToXcf(deploymentTarget = "7.0") }
 
     // iosX64: Intel Mac simulator. Tier 3 in Kotlin/Native but NOT deprecated —
     // Apple still ships x86_64 iOS simulator runtimes, so it is always built.
-    iosX64 { addToXcf(static = true) }
+    iosX64 { addToXcf(static = true, deploymentTarget = "14.0") }
 
     // Other native — Tier 1/2
     linuxX64()
@@ -317,7 +331,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(libs.bundles.age.commonMain)
+            implementation(commonMainDependencyBundle)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -426,8 +440,8 @@ val patchedKarmaWebpackPackage =
         .asFile.absolutePath
         .replace("\\", "/")
 
-// NodeJsRootExtension.versions.* is deprecated; the spec-based NodeJsEnvSpec API
-// does not expose equivalent package-version pins in the Kotlin Gradle plugin version used here.
+// TODO: NodeJsRootExtension.versions.* is deprecated and will be removed when the spec-based
+//       NodeJsEnvSpec API gains equivalent properties. Track KGP release notes before removing.
 rootProject.extensions.configure<NodeJsRootExtension>("kotlinNodeJs") {
     versions.webpack.version = providers.gradleProperty("node.webpack.version").getOrElse("5.106.2")
     versions.webpackCli.version = providers.gradleProperty("node.webpackCli.version").getOrElse("7.0.2")
@@ -685,7 +699,8 @@ tasks.register("swiftExportSmokeTest") {
             layout.buildDirectory
                 .dir("swift-test")
                 .get()
-                .asFile.absolutePath
+                .asFile
+                .absolutePath
         execOperations
             .exec {
                 workingDir = projectDir
