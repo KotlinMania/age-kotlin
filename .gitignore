@@ -48,6 +48,9 @@ __pycache__/
 /.android-sdk/
 local.properties
 
+# Local scratch / backup artifacts
+*.bak
+
 # Swift Package Manager / Xcode workspace state.
 #
 # `swift-test-harness/` is a real SPM package that exercises the Kotlin
