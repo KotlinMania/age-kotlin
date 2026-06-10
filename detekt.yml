@@ -1,6 +1,7 @@
-# Detekt configuration for the age-kotlin port.
-# Relaxed from template defaults because this repository is still a faithful
-# line-by-line port of upstream Rust code rather than an idiomatic rewrite.
+# Detekt configuration for KotlinMania ports.
+# Relaxed from template defaults because this is a line-by-line port of
+# upstream source code; many structural/style rules that make sense for
+# idiomatic Kotlin would create false positives here.
 
 build:
   maxIssues: 100
@@ -77,3 +78,27 @@ empty-blocks:
   EmptyTryBlock: { active: true }
   EmptyWhenBlock: { active: true }
   EmptyWhileBlock: { active: true }
+
+naming:
+  active: true
+  TopLevelPropertyNaming: { active: false }
+  FunctionNaming: { active: false }
+  ClassNaming: { active: true }
+  EnumNaming: { active: true }
+  VariableNaming: { active: false }
+  ConstructorParameterNaming: { active: false }
+  FunctionParameterNaming: { active: false }
+  MatchingDeclarationName: { active: false }
+  ObjectPropertyNaming: { active: false }
+
+exceptions:
+  active: true
+  TooGenericExceptionThrown: { active: false }
+  TooGenericExceptionCaught: { active: false }
+  SwallowedException: { active: false }
+  InstanceOfCheckForException: { active: false }
+  ExceptionRaisedInUnexpectedLocation: { active: false }
+  ThrowingExceptionsWithoutMessageOrCause: { active: false }
+
+coroutines:
+  active: false
