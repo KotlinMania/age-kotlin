@@ -98,7 +98,7 @@ jobs:
           if "platforms:" not in text:
               package.write_text(
                   re.sub(
-                      r'(name:\s*"[^"]*",)',
+                      r'(let package = Package\(\s*name:\s*"[^"]*",)',
                       r'\1\n    platforms: [.macOS(.v14)],',
                       text,
                       count=1,
