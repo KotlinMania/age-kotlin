@@ -4,14 +4,14 @@ Based on AST analysis, here are the concrete next steps.
 
 ## Summary
 
-- **Files Present:** 1/24 (4.2%)
-- **Function parity:** 5/369 matched (target 25) — 1.4%
-- **Class/type parity:** 4/82 matched (target 25) — 4.9%
-- **Combined symbol parity:** 9/451 matched (target 50) — 2.0%
-- **Average inline-code cosine:** 0.31 (function body across 1 matched files)
-- **Average documentation cosine:** 0.90 (doc text across 1 matched files)
+- **Files Present:** 2/24 (8.3%)
+- **Function parity:** 12/369 matched (target 44) — 3.3%
+- **Class/type parity:** 4/82 matched (target 28) — 4.9%
+- **Combined symbol parity:** 16/451 matched (target 72) — 3.5%
+- **Average inline-code cosine:** 0.39 (function body across 2 matched files)
+- **Average documentation cosine:** 0.58 (doc text across 2 matched files)
 - **Cheat-zeroed Files:** 0
-- **Critical Issues:** 1 files with <0.60 function similarity
+- **Critical Issues:** 2 files with <0.60 function similarity
 
 ## Priority 1: Fix Incomplete High-Dependency Files
 
@@ -36,6 +36,17 @@ Every matched file is listed below with function and type symbol parity.
 - **Functions:** 5/5 matched (target 25)
 - **Missing functions:** _none_
 - **Types:** 4/4 matched (target 25)
+- **Missing types:** _none_
+
+### 2. util
+
+- **Target:** `age.Util`
+- **Similarity:** 0.48
+- **Dependents:** 0
+- **Priority Score:** 705.2
+- **Functions:** 7/7 matched (target 19)
+- **Missing functions:** _none_
+- **Types:** 0/0 matched (target 3)
 - **Missing types:** _none_
 
 ## Success Criteria
