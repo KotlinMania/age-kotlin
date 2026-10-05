@@ -59,7 +59,7 @@ sealed class IdentityFileConvertError(
         /** The name of the plugin. */
         val pluginName: String,
     ) : IdentityFileConvertError(
-            "Identity file '${filename ?: ""}' contains identities for 'age-plugin-$pluginName'.\n" +
+            "Identity file '${filename.orEmpty()}' contains identities for 'age-plugin-$pluginName'.\n" +
                 "Try using 'age-plugin-$pluginName' to convert this identity to a recipient.",
         )
 
