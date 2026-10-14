@@ -81,6 +81,7 @@ sealed class IdentityFileConvertError(
     fun source(): Throwable? =
         when (this) {
             is FailedToWriteOutput -> error
+
             is IdentityFileContainsPlugin,
             is NoIdentities,
             -> null
@@ -173,15 +174,23 @@ sealed class EncryptError(
                 val lEmpty = lLabels.isEmpty()
                 val rEmpty = rLabels.isEmpty()
                 return when {
-                    lEmpty && rEmpty -> error("labels are compatible")
-                    !lEmpty && rEmpty ->
+                    lEmpty && rEmpty -> {
+                        error("labels are compatible")
+                    }
+
+                    !lEmpty && rEmpty -> {
                         "Cannot encrypt to a recipient with labels '${printLabels(lLabels)}' alongside a recipient with no labels"
-                    lEmpty && !rEmpty ->
+                    }
+
+                    lEmpty && !rEmpty -> {
                         "Cannot encrypt to a recipient with labels '${printLabels(rLabels)}' alongside a recipient with no labels"
-                    else ->
+                    }
+
+                    else -> {
                         "Cannot encrypt to a recipient with labels '${printLabels(
                             lLabels,
                         )}' alongside a recipient with labels '${printLabels(rLabels)}'"
+                    }
                 }
             }
         }
@@ -226,15 +235,22 @@ sealed class EncryptError(
         companion object {
             internal fun formatMessage(errors: List<PluginError>): String =
                 when (errors.size) {
-                    0 -> error("empty plugin error list")
-                    1 -> errors[0].toString()
-                    else ->
+                    0 -> {
+                        error("empty plugin error list")
+                    }
+
+                    1 -> {
+                        errors[0].toString()
+                    }
+
+                    else -> {
                         buildString {
                             append("Plugin returned multiple errors:\n")
                             for (e in errors) {
                                 append("- ").append(e).append('\n')
                             }
                         }
+                    }
                 }
         }
     }
@@ -256,7 +272,9 @@ sealed class EncryptError(
     fun source(): Throwable? =
         when (this) {
             is EncryptedIdentities -> source
+
             is Io -> error
+
             is IncompatibleRecipients,
             is InvalidRecipientLabels,
             is MissingPlugin,
@@ -346,15 +364,22 @@ sealed class DecryptError(
         companion object {
             internal fun formatMessage(errors: List<PluginError>): String =
                 when (errors.size) {
-                    0 -> error("empty plugin error list")
-                    1 -> errors[0].toString()
-                    else ->
+                    0 -> {
+                        error("empty plugin error list")
+                    }
+
+                    1 -> {
+                        errors[0].toString()
+                    }
+
+                    else -> {
                         buildString {
                             append("Plugin returned multiple errors:\n")
                             for (e in errors) {
                                 append("- ").append(e).append('\n')
                             }
                         }
+                    }
                 }
         }
     }
@@ -383,6 +408,7 @@ sealed class DecryptError(
     fun source(): Throwable? =
         when (this) {
             is Io -> error
+
             DecryptionFailed,
             is ExcessiveWork,
             InvalidHeader,

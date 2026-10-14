@@ -868,7 +868,10 @@ val publishToCentralPortal by tasks.registering {
                 statusBody["deploymentState"]?.toString()
                     ?: error("Central Portal status response did not contain deploymentState: ${statusResponse.body()}")
             when (deploymentState) {
-                "FAILED" -> error("Central Portal deployment failed: ${statusBody["errors"] ?: statusResponse.body()}")
+                "FAILED" -> {
+                    error("Central Portal deployment failed: ${statusBody["errors"] ?: statusResponse.body()}")
+                }
+
                 in terminalStates -> {
                     logger.lifecycle("Central Portal deployment $deploymentId reached $deploymentState.")
                     return@doLast
@@ -900,6 +903,16 @@ tasks.register("setupAndroidSdk") {
     group = "setup"
     description = "Downloads and configures the project-local Android SDK. (Alias for ensureAndroidSdk)"
     dependsOn("ensureAndroidSdk")
+}
+
+// Exact test lifecycle task. Without this, ./gradlew test is ambiguous between
+// Android test task names. This runs commonTest through the KMP allTests
+// lifecycle and adds the Android host + Swift Export parity tests.
+tasks.register("test") {
+    group = "verification"
+    description = "Runs the commonTest-backed KMP suite, Android host tests, and Swift Export smoke test."
+    dependsOn("hostTests")
+    dependsOn("swiftExportSmokeTest")
 }
 
 // Explicit test runner. Named hostTests to avoid shadowing the KMP allTests
