@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootExtension
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec
 import org.jetbrains.kotlin.gradle.targets.wasm.yarn.WasmYarnRootEnvSpec
 import java.io.ByteArrayInputStream
+import java.io.IOException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -45,7 +46,7 @@ plugins {
 }
 
 group = providers.gradleProperty("project.group").getOrElse("io.github.kotlinmania")
-version = providers.gradleProperty("project.version").getOrElse("0.1.0-SNAPSHOT")
+version = providers.gradleProperty("project.version").get()
 val frameworkName = providers.gradleProperty("project.frameworkName").getOrElse("Unnamed")
 val projectNamespace = providers.gradleProperty("project.namespace").getOrElse("io.github.kotlinmania")
 val kotlinVersion = providers.gradleProperty("versions.kotlin").getOrElse("2.4.0")
@@ -410,10 +411,6 @@ kotlin {
         configureBenchmarkCompilation()
         addToXcf()
     }
-    watchosArm64 {
-        configureBenchmarkCompilation()
-        addToXcf()
-    }
     watchosDeviceArm64 {
         configureBenchmarkCompilation()
         addToXcf()
@@ -421,13 +418,6 @@ kotlin {
     watchosSimulatorArm64 {
         configureBenchmarkCompilation()
         addToXcf()
-    }
-
-    // iosX64: Intel Mac simulator. Tier 3 in Kotlin/Native but NOT deprecated —
-    // Apple still ships x86_64 iOS simulator runtimes, so it is always built.
-    iosX64 {
-        configureBenchmarkCompilation()
-        addToXcf(static = true)
     }
 
     // Other native — Tier 1/2
@@ -859,7 +849,34 @@ val publishToCentralPortal by tasks.registering {
                     .header("Authorization", "Bearer $token")
                     .POST(HttpRequest.BodyPublishers.noBody())
                     .build()
-            val statusResponse = client.send(statusRequest, HttpResponse.BodyHandlers.ofString())
+            val statusResponse =
+                try {
+                    client.send(statusRequest, HttpResponse.BodyHandlers.ofString())
+                } catch (failure: IOException) {
+                    logger.warn(
+                        "Central Portal deployment $deploymentId status check failed " +
+                            "(${attempt + 1}/$statusAttempts): ${failure.message}. " +
+                            "The upload was accepted; continuing status checks.",
+                    )
+                    if (attempt + 1 < statusAttempts) {
+                        Thread.sleep(statusDelayMillis)
+                    }
+                    return@repeat
+                }
+            if (
+                statusResponse.statusCode() == 408 || statusResponse.statusCode() == 429 ||
+                statusResponse.statusCode() in 500..599
+            ) {
+                logger.warn(
+                    "Central Portal deployment $deploymentId status check returned " +
+                        "HTTP ${statusResponse.statusCode()} (${attempt + 1}/$statusAttempts). " +
+                        "The upload was accepted; continuing status checks.",
+                )
+                if (attempt + 1 < statusAttempts) {
+                    Thread.sleep(statusDelayMillis)
+                }
+                return@repeat
+            }
             if (statusResponse.statusCode() !in 200..299) {
                 error("Central Portal status check failed: HTTP ${statusResponse.statusCode()} — ${statusResponse.body()}")
             }
@@ -1036,8 +1053,8 @@ tasks.register("swiftExportSmokeTest") {
 // `build` aggregate
 // ----------------------------------------------------------------------------
 // Every configured native target, unconditionally. This is the audit contract —
-// it must mirror the kotlin { } target block exactly. watchosArm32 is the only
-// retired native target (see §5.5.1); everything else MUST build.
+// it must mirror the kotlin { } target block exactly. Retired 32-bit and Apple
+// Intel targets are excluded according to AGENTS.md §5.5.
 // Do not add a dynamic tasks.matching fallback here: copied templates must make
 // the target surface explicit so missing declarations fail loudly in review.
 // ============================================================================
@@ -1047,14 +1064,12 @@ val nativeTargetNames =
         "androidNativeX64",
         "iosArm64",
         "iosSimulatorArm64",
-        "iosX64",
         "linuxArm64",
         "linuxX64",
         "macosArm64",
         "mingwX64",
         "tvosArm64",
         "tvosSimulatorArm64",
-        "watchosArm64",
         "watchosDeviceArm64",
         "watchosSimulatorArm64",
     )
