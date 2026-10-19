@@ -11,6 +11,7 @@ ktlintEngine = "1.8.0"
 kotlinxBenchmark = "0.5.0"
 
 zeroize = "0.1.1"
+procMacro = "0.1.4"
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -30,10 +31,13 @@ collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-im
 kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinxBenchmark" }
 
 zeroize-kotlin = { module = "io.github.kotlinmania:zeroize-kotlin", version.ref = "zeroize" }
+proc-macro-kotlin = { module = "io.github.kotlinmania:proc-macro-kotlin", version.ref = "procMacro" }
 
 [bundles]
 age-commonMain = [
   "zeroize-kotlin",
+  # Relocated annotations avoid duplicate classes in Android device tests.
+  "proc-macro-kotlin",
   "kotlinx-coroutines-core",
   "kotlinx-serialization-core",
   "kotlinx-serialization-json",
