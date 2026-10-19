@@ -1,5 +1,3 @@
-// port-lint: ignore
-// Exercises translated error.rs display behavior.
 package io.github.kotlinmania.age
 
 import kotlin.test.Test
