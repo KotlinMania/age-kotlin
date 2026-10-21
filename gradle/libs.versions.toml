@@ -12,6 +12,15 @@ kotlinxBenchmark = "0.5.0"
 
 zeroize = "0.1.1"
 procMacro = "0.1.4"
+base64 = "0.1.0"
+futures = "0.2.0"
+lazyStatic = "0.1.1"
+sha2 = "0.1.0"
+hmac = "0.1.2"
+tokio = "0.1.1"
+which = "0.1.3"
+rand = "0.1.0"
+constantTimeEq = "0.1.1"
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -32,12 +41,30 @@ kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-
 
 zeroize-kotlin = { module = "io.github.kotlinmania:zeroize-kotlin", version.ref = "zeroize" }
 proc-macro-kotlin = { module = "io.github.kotlinmania:proc-macro-kotlin", version.ref = "procMacro" }
+base64-kotlin = { module = "io.github.kotlinmania:base64-kotlin", version.ref = "base64" }
+futures-kotlin = { module = "io.github.kotlinmania:futures-kotlin", version.ref = "futures" }
+lazy-static-kotlin = { module = "io.github.kotlinmania:lazy-static-kotlin", version.ref = "lazyStatic" }
+sha2-kotlin = { module = "io.github.kotlinmania:sha2-kotlin", version.ref = "sha2" }
+hmac-kotlin = { module = "io.github.kotlinmania:hmac-kotlin", version.ref = "hmac" }
+tokio-kotlin = { module = "io.github.kotlinmania:tokio-kotlin", version.ref = "tokio" }
+which-kotlin = { module = "io.github.kotlinmania:which-kotlin", version.ref = "which" }
+rand-kotlin = { module = "io.github.kotlinmania:rand-kotlin", version.ref = "rand" }
+constant-time-eq-kotlin = { module = "io.github.kotlinmania:constant-time-eq-kotlin", version.ref = "constantTimeEq" }
 
 [bundles]
 age-commonMain = [
   "zeroize-kotlin",
   # Relocated annotations avoid duplicate classes in Android device tests.
   "proc-macro-kotlin",
+  "base64-kotlin",
+  "futures-kotlin",
+  "lazy-static-kotlin",
+  "sha2-kotlin",
+  "hmac-kotlin",
+  "tokio-kotlin",
+  "which-kotlin",
+  "rand-kotlin",
+  "constant-time-eq-kotlin",
   "kotlinx-coroutines-core",
   "kotlinx-serialization-core",
   "kotlinx-serialization-json",
