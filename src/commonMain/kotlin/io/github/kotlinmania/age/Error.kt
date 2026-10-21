@@ -1,53 +1,18 @@
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 // port-lint: source error.rs
 
 package io.github.kotlinmania.age
 
-import kotlin.native.HiddenFromObjC
-
-/*
- * Error type.
- *
- * The upstream Rust error types delegate their display text to localized formatting
- * helpers, which resolve to strings out of the `i18n/<locale>/age.ftl` Fluent bundle.
- * There is no i18n sibling in the kotlinmania workspace yet, so the English text from
- * `i18n/en-US/age.ftl` is inlined directly into each variant's [Throwable.message] here.
- * When an i18n port lands, callers will be able to route through that instead.
- *
- * Upstream uses the Rust standard I/O error type to carry I/O failures (kind + message +
- * cause). Kotlin's stdlib does not have a portable analog, so the [EncryptError.Io] and
- * [DecryptError.Io] variants below carry a plain [Throwable]. Cloning an I/O failure in
- * upstream rebuilds it from kind and message; Kotlin shares the [Throwable] by reference
- * instead.
- *
- * The upstream conversion implementations from the authenticated-encryption error, HMAC
- * MAC error, and RSA error to [DecryptError] support early-return error propagation across
- * crypto crates. Kotlin has no implicit conversion trait, so call sites construct the
- * appropriate [DecryptError] variant directly ([DecryptError.DecryptionFailed],
- * [DecryptError.InvalidMac], etc.). Those construction idioms live with the crypto call
- * sites, not in this file.
- *
- * The plugin-feature variants ([PluginError], [IdentityFileConvertError.IdentityFileContainsPlugin],
- * [EncryptError.MissingPlugin], [EncryptError.Plugin], [DecryptError.MissingPlugin] and
- * [DecryptError.Plugin]) were originally gated behind the plugin Cargo feature. Kotlin
- * does not have crate features, so they are present unconditionally; the parsing
- * conversion from the age-core format stanza type will land once `age-core` is ported.
+/**
+ * Errors returned when converting an identity file to a recipients file.
  */
-
-/** Errors returned when converting an identity file to a recipients file. */
-@HiddenFromObjC
-sealed class IdentityFileConvertError(
-    message: String,
-    cause: Throwable? = null,
-) : Throwable(message, cause) {
+sealed class IdentityFileConvertError {
     /**
      * An I/O error occurred while writing out a recipient corresponding to an identity
      * in this file.
      */
     class FailedToWriteOutput(
-        val error: Throwable,
-    ) : IdentityFileConvertError("Failed to write to output: $error", error)
+        val error: Any,
+    ) : IdentityFileConvertError()
 
     /**
      * The identity file contains a plugin identity, which can be converted to a
@@ -58,10 +23,7 @@ sealed class IdentityFileConvertError(
         val filename: String?,
         /** The name of the plugin. */
         val pluginName: String,
-    ) : IdentityFileConvertError(
-            "Identity file '${filename.orEmpty()}' contains identities for 'age-plugin-$pluginName'.\n" +
-                "Try using 'age-plugin-$pluginName' to convert this identity to a recipient.",
-        )
+    ) : IdentityFileConvertError()
 
     /**
      * The identity file contains no identities, and thus cannot be used to produce a
@@ -70,15 +32,10 @@ sealed class IdentityFileConvertError(
     class NoIdentities(
         /** The given identity file. */
         val filename: String?,
-    ) : IdentityFileConvertError(
-            when (filename) {
-                null -> "No identities found in standard input."
-                else -> "No identities found in file '$filename'."
-            },
-        )
+    ) : IdentityFileConvertError()
 
     /** Returns the underlying error, when this variant wraps one. */
-    fun source(): Throwable? =
+    fun source(): Any? =
         when (this) {
             is FailedToWriteOutput -> error
 
@@ -88,22 +45,53 @@ sealed class IdentityFileConvertError(
         }
 
     /** Formats this error for display. */
-    fun fmt(): String = toString()
+    fun fmt(): String =
+        when (this) {
+            is FailedToWriteOutput -> {
+                "Failed to write to output: $error"
+            }
 
-    override fun toString(): String = message ?: super.toString()
+            is IdentityFileContainsPlugin -> {
+                "Identity file '${filename.orEmpty()}' contains identities for 'age-plugin-$pluginName'.\n" +
+                    "Try using 'age-plugin-$pluginName' to convert this identity to a recipient."
+            }
+
+            is NoIdentities -> {
+                if (filename != null) {
+                    "No identities found in file '$filename'."
+                } else {
+                    "No identities found in standard input."
+                }
+            }
+        }
+
+    override fun toString(): String = fmt()
 }
 
-/** Errors returned by a plugin. */
+/**
+ * Errors returned by a plugin.
+ */
 sealed class PluginError {
+    companion object {
+        /** Creates a plugin error from an error stanza. */
+        fun from(tag: String, args: MutableList<String>, body: ByteArray): PluginError {
+            require(tag == "error") { "expected error tag" }
+            val kind = args.removeAt(0)
+            return Other(
+                kind = kind,
+                metadata = args.toList(),
+                message = body.decodeToString(),
+            )
+        }
+    }
+
     /** An error caused by a specific identity. */
     data class Identity(
         /** The plugin's binary name. */
         val binaryName: String,
         /** The error message. */
         val message: String,
-    ) : PluginError() {
-        override fun toString(): String = "'$binaryName' couldn't use an identity: $message"
-    }
+    ) : PluginError()
 
     /** An error caused by a specific recipient. */
     data class Recipient(
@@ -113,9 +101,7 @@ sealed class PluginError {
         val recipient: String,
         /** The error message. */
         val message: String,
-    ) : PluginError() {
-        override fun toString(): String = "'$binaryName' couldn't use recipient $recipient: $message"
-    }
+    ) : PluginError()
 
     /** Some other error we don't know about. */
     data class Other(
@@ -125,39 +111,52 @@ sealed class PluginError {
         val metadata: List<String>,
         /** The error message. */
         val message: String,
-    ) : PluginError() {
-        override fun toString(): String =
-            buildString {
-                append('(').append(kind)
-                for (d in metadata) {
-                    append(' ').append(d)
-                }
-                append(')')
-                if (message.isNotEmpty()) {
-                    append(' ').append(message)
-                }
-            }
-    }
+    ) : PluginError()
 
     /** Formats this error for display. */
-    fun fmt(): String = toString()
+    fun fmt(): String =
+        when (this) {
+            is Identity -> {
+                "'$binaryName' couldn't use an identity: $message"
+            }
+
+            is Recipient -> {
+                "'$binaryName' couldn't use recipient $recipient: $message"
+            }
+
+            is Other -> {
+                buildString {
+                    append('(').append(kind)
+                    for (d in metadata) {
+                        append(' ').append(d)
+                    }
+                    append(')')
+                    if (message.isNotEmpty()) {
+                        append(' ').append(message)
+                    }
+                }
+            }
+        }
+
+    override fun toString(): String = fmt()
 }
 
-/** The various errors that can be returned during the encryption process. */
-@HiddenFromObjC
-sealed class EncryptError(
-    message: String,
-    cause: Throwable? = null,
-) : Throwable(message, cause) {
+/**
+ * The various errors that can be returned during the encryption process.
+ */
+sealed class EncryptError {
     companion object {
         /** Lifts an I/O failure into an encryption error. */
-        fun from(error: Throwable): EncryptError = Io(error)
+        fun from(error: Any): EncryptError = Io(error)
+
+        /** Lifts a decryption failure into an encryption error. */
+        fun from(error: DecryptError): EncryptError = EncryptedIdentities(error)
     }
 
-    /** An error occured while decrypting passphrase-encrypted identities. */
+    /** An error occurred while decrypting passphrase-encrypted identities. */
     class EncryptedIdentities(
         val source: DecryptError,
-    ) : EncryptError(source.toString(), source)
+    ) : EncryptError()
 
     /** The encryptor was given recipients that declare themselves incompatible. */
     class IncompatibleRecipients(
@@ -165,95 +164,37 @@ sealed class EncryptError(
         val lLabels: Set<String>,
         /** The set of labels from the first non-matching recipient. */
         val rLabels: Set<String>,
-    ) : EncryptError(formatMessage(lLabels, rLabels)) {
-        companion object {
-            internal fun formatMessage(
-                lLabels: Set<String>,
-                rLabels: Set<String>,
-            ): String {
-                val lEmpty = lLabels.isEmpty()
-                val rEmpty = rLabels.isEmpty()
-                return when {
-                    lEmpty && rEmpty -> {
-                        error("labels are compatible")
-                    }
-
-                    !lEmpty && rEmpty -> {
-                        "Cannot encrypt to a recipient with labels '${printLabels(lLabels)}' alongside a recipient with no labels"
-                    }
-
-                    lEmpty && !rEmpty -> {
-                        "Cannot encrypt to a recipient with labels '${printLabels(rLabels)}' alongside a recipient with no labels"
-                    }
-
-                    else -> {
-                        "Cannot encrypt to a recipient with labels '${printLabels(
-                            lLabels,
-                        )}' alongside a recipient with labels '${printLabels(rLabels)}'"
-                    }
-                }
-            }
-        }
-    }
+    ) : EncryptError()
 
     /**
      * One or more of the labels from the first recipient provided to the encryptor are
      * invalid.
-     *
-     * Labels must be valid age "arbitrary string"s (`1*VCHAR` in ABNF).
      */
     class InvalidRecipientLabels(
         val labels: Set<String>,
-    ) : EncryptError(
-            "The first recipient requires one or more invalid labels: '${printLabels(labels)}'",
-        )
+    ) : EncryptError()
 
     /** An I/O error occurred during encryption. */
     class Io(
-        val error: Throwable,
-    ) : EncryptError(error.toString(), error)
+        val error: Any,
+    ) : EncryptError()
 
     /** A required plugin could not be found. */
     class MissingPlugin(
         /** The plugin's binary name. */
         val binaryName: String,
-    ) : EncryptError(
-            "Could not find '$binaryName' on the PATH.\nHave you installed the plugin?",
-        )
+    ) : EncryptError()
 
     /** The encryptor was not given any recipients. */
-    object MissingRecipients : EncryptError("Missing recipients.")
+    object MissingRecipients : EncryptError()
 
-    /** [io.github.kotlinmania.age.scrypt.Recipient] was mixed with other recipient types. */
-    object MixedRecipientAndPassphrase :
-        EncryptError("scrypt::Recipient can't be used with other recipients.")
+    /** Recipient was mixed with other recipient types. */
+    object MixedRecipientAndPassphrase : EncryptError()
 
     /** Errors from a plugin. */
     class Plugin(
         val errors: List<PluginError>,
-    ) : EncryptError(formatMessage(errors)) {
-        companion object {
-            internal fun formatMessage(errors: List<PluginError>): String =
-                when (errors.size) {
-                    0 -> {
-                        error("empty plugin error list")
-                    }
-
-                    1 -> {
-                        errors[0].toString()
-                    }
-
-                    else -> {
-                        buildString {
-                            append("Plugin returned multiple errors:\n")
-                            for (e in errors) {
-                                append("- ").append(e).append('\n')
-                            }
-                        }
-                    }
-                }
-        }
-    }
+    ) : EncryptError()
 
     /** Creates an equivalent error value. */
     fun clone(): EncryptError =
@@ -269,9 +210,9 @@ sealed class EncryptError(
         }
 
     /** Returns the underlying error, when this variant wraps one. */
-    fun source(): Throwable? =
+    fun source(): Any? =
         when (this) {
-            is EncryptedIdentities -> source
+            is EncryptedIdentities -> source.source()
 
             is Io -> error
 
@@ -285,23 +226,89 @@ sealed class EncryptError(
         }
 
     /** Formats this error for display. */
-    fun fmt(): String = toString()
+    fun fmt(): String =
+        when (this) {
+            is EncryptedIdentities -> {
+                source.fmt()
+            }
 
-    override fun toString(): String = message ?: super.toString()
+            is IncompatibleRecipients -> {
+                val lEmpty = lLabels.isEmpty()
+                val rEmpty = rLabels.isEmpty()
+                when {
+                    lEmpty && rEmpty -> {
+                        error("labels are compatible")
+                    }
+
+                    !lEmpty && rEmpty -> {
+                        "Cannot encrypt to a recipient with labels '${printLabels(lLabels)}' alongside a recipient with no labels"
+                    }
+
+                    lEmpty && !rEmpty -> {
+                        "Cannot encrypt to a recipient with labels '${printLabels(rLabels)}' alongside a recipient with no labels"
+                    }
+
+                    else -> {
+                        "Cannot encrypt to a recipient with labels '${printLabels(lLabels)}' alongside a recipient with labels '${printLabels(rLabels)}'"
+                    }
+                }
+            }
+
+            is InvalidRecipientLabels -> {
+                "The first recipient requires one or more invalid labels: '${printLabels(labels)}'"
+            }
+
+            is Io -> {
+                error.toString()
+            }
+
+            is MissingPlugin -> {
+                "Could not find '$binaryName' on the PATH.\nHave you installed the plugin?"
+            }
+
+            MissingRecipients -> {
+                "Missing recipients."
+            }
+
+            MixedRecipientAndPassphrase -> {
+                "scrypt::Recipient can't be used with other recipients."
+            }
+
+            is Plugin -> {
+                when (errors.size) {
+                    0 -> {
+                        error("empty plugin error list")
+                    }
+
+                    1 -> {
+                        errors[0].fmt()
+                    }
+
+                    else -> {
+                        buildString {
+                            append("Plugin returned multiple errors:\n")
+                            for (e in errors) {
+                                append("- ").append(e.fmt()).append('\n')
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    override fun toString(): String = fmt()
 }
 
-/** The various errors that can be returned during the decryption process. */
-@HiddenFromObjC
-sealed class DecryptError(
-    message: String,
-    cause: Throwable? = null,
-) : Throwable(message, cause) {
+/**
+ * The various errors that can be returned during the decryption process.
+ */
+sealed class DecryptError {
     companion object {
         /** Maps an authenticated-decryption failure into the age decryption error. */
         fun fromAuthenticatedDecryptionError(): DecryptError = DecryptionFailed
 
         /** Lifts an I/O failure into a decryption error. */
-        fun from(error: Throwable): DecryptError = Io(error)
+        fun from(error: Any): DecryptError = Io(error)
 
         /** Maps a header MAC failure into the age decryption error. */
         fun fromMacError(): DecryptError = InvalidMac
@@ -311,7 +318,7 @@ sealed class DecryptError(
     }
 
     /** The age file failed to decrypt. */
-    object DecryptionFailed : DecryptError("Decryption failed")
+    object DecryptionFailed : DecryptError()
 
     /** The age file used an excessive work factor for passphrase encryption. */
     class ExcessiveWork(
@@ -319,75 +326,38 @@ sealed class DecryptError(
         val required: UByte,
         /** The target work factor for this device (around 1 second of work). */
         val target: UByte,
-    ) : DecryptError(formatMessage(required, target)) {
-        companion object {
-            internal fun formatMessage(
-                required: UByte,
-                target: UByte,
-            ): String {
-                val duration = 1 shl (required.toInt() - target.toInt())
-                return "Excessive work parameter for passphrase.\n" +
-                    "Decryption would take around $duration seconds."
-            }
-        }
-    }
+    ) : DecryptError()
 
     /** The age header was invalid. */
-    object InvalidHeader : DecryptError("Header is invalid")
+    object InvalidHeader : DecryptError()
 
     /** The MAC in the age header was invalid. */
-    object InvalidMac : DecryptError("Header MAC is invalid")
+    object InvalidMac : DecryptError()
 
     /** An I/O error occurred during decryption. */
     class Io(
-        val error: Throwable,
-    ) : DecryptError(error.toString(), error)
+        val error: Any,
+    ) : DecryptError()
 
     /** Failed to decrypt an encrypted key. */
-    object KeyDecryptionFailed : DecryptError("Failed to decrypt an encrypted key")
+    object KeyDecryptionFailed : DecryptError()
 
     /** A required plugin could not be found. */
     class MissingPlugin(
         /** The plugin's binary name. */
         val binaryName: String,
-    ) : DecryptError(
-            "Could not find '$binaryName' on the PATH.\nHave you installed the plugin?",
-        )
+    ) : DecryptError()
 
     /** None of the provided keys could be used to decrypt the age file. */
-    object NoMatchingKeys : DecryptError("No matching keys found")
+    object NoMatchingKeys : DecryptError()
 
     /** Errors from a plugin. */
     class Plugin(
         val errors: List<PluginError>,
-    ) : DecryptError(formatMessage(errors)) {
-        companion object {
-            internal fun formatMessage(errors: List<PluginError>): String =
-                when (errors.size) {
-                    0 -> {
-                        error("empty plugin error list")
-                    }
-
-                    1 -> {
-                        errors[0].toString()
-                    }
-
-                    else -> {
-                        buildString {
-                            append("Plugin returned multiple errors:\n")
-                            for (e in errors) {
-                                append("- ").append(e).append('\n')
-                            }
-                        }
-                    }
-                }
-        }
-    }
+    ) : DecryptError()
 
     /** An unknown age format, probably from a newer version. */
-    object UnknownFormat : DecryptError(
-        "Unknown age format.\nHave you tried upgrading to the latest version?",
-    )
+    object UnknownFormat : DecryptError()
 
     /** Creates an equivalent error value. */
     fun clone(): DecryptError =
@@ -405,7 +375,7 @@ sealed class DecryptError(
         }
 
     /** Returns the underlying error, when this variant wraps one. */
-    fun source(): Throwable? =
+    fun source(): Any? =
         when (this) {
             is Io -> error
 
@@ -422,9 +392,69 @@ sealed class DecryptError(
         }
 
     /** Formats this error for display. */
-    fun fmt(): String = toString()
+    fun fmt(): String =
+        when (this) {
+            DecryptionFailed -> {
+                "Decryption failed"
+            }
 
-    override fun toString(): String = message ?: super.toString()
+            is ExcessiveWork -> {
+                val duration = 1 shl (required.toInt() - target.toInt())
+                "Excessive work parameter for passphrase.\n" +
+                    "Decryption would take around $duration seconds."
+            }
+
+            InvalidHeader -> {
+                "Header is invalid"
+            }
+
+            InvalidMac -> {
+                "Header MAC is invalid"
+            }
+
+            is Io -> {
+                error.toString()
+            }
+
+            KeyDecryptionFailed -> {
+                "Failed to decrypt an encrypted key"
+            }
+
+            is MissingPlugin -> {
+                "Could not find '$binaryName' on the PATH.\nHave you installed the plugin?"
+            }
+
+            NoMatchingKeys -> {
+                "No matching keys found"
+            }
+
+            is Plugin -> {
+                when (errors.size) {
+                    0 -> {
+                        error("empty plugin error list")
+                    }
+
+                    1 -> {
+                        errors[0].fmt()
+                    }
+
+                    else -> {
+                        buildString {
+                            append("Plugin returned multiple errors:\n")
+                            for (e in errors) {
+                                append("- ").append(e.fmt()).append('\n')
+                            }
+                        }
+                    }
+                }
+            }
+
+            UnknownFormat -> {
+                "Unknown age format.\nHave you tried upgrading to the latest version?"
+            }
+        }
+
+    override fun toString(): String = fmt()
 }
 
 private fun printLabels(labels: Set<String>): String =

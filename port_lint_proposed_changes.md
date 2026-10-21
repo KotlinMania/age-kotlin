@@ -1,6 +1,6 @@
 # port-lint Proposed Changes
 
-**Generated:** 2026-08-31
+**Generated:** 2026-10-21
 **Source:** tmp/age/src
 **Target:** src/commonMain/kotlin/io/github/kotlinmania/age
 
