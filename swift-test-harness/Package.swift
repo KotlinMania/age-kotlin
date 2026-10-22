@@ -7,20 +7,21 @@ let package = Package(
         .macOS(.v15),
     ],
     dependencies: [
-        .package(name: "Age", path: "../build/SPMPackage/macosArm64/Debug")
+        .package(name: "Template", path: "../build/SPMPackage/macosArm64/Debug")
     ],
     targets: [
         .testTarget(
             name: "SwiftTestHarnessTests",
             dependencies: [
-                .product(name: "AgeLibrary", package: "Age")
+                .product(name: "TemplateLibrary", package: "Template")
             ],
             linkerSettings: [
                 .unsafeFlags([
                     "-L", "../build/swift-test",
-                    "-lAge",
+                    "-lTemplate",
                 ]),
             ]
         ),
-    ]
+    ],
+    swiftLanguageModes: [.v6]
 )
