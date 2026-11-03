@@ -5,13 +5,15 @@ Based on AST analysis, here are the concrete next steps.
 ## Summary
 
 - **Files Present:** 2/24 (8.3%)
-- **Function parity:** 12/369 matched (target 40) — 3.3%
+- **Function parity:** 21/380 matched (target 40) — 5.5%
 - **Class/type parity:** 4/82 matched (target 28) — 4.9%
-- **Combined symbol parity:** 16/451 matched (target 68) — 3.5%
-- **Average inline-code cosine:** 0.49 (function body across 2 matched files)
+- **Combined symbol parity:** 25/462 matched (target 68) — 5.4%
+- **Average inline-code cosine:** 0.08 (function body across 2 matched files)
 - **Average documentation cosine:** 0.57 (doc text across 2 matched files)
 - **Cheat-zeroed Files:** 0
 - **Critical Issues:** 2 files with <0.60 function similarity
+- **Needs Review:** 0 files with 0.60-0.84 function similarity
+- **Excellent:** 0 files with >=0.85 function similarity
 
 ## Priority 1: Fix Incomplete High-Dependency Files
 
@@ -30,20 +32,20 @@ Every matched file is listed below with function and type symbol parity.
 ### 1. error
 
 - **Target:** `age.Error`
-- **Similarity:** 0.51
+- **Similarity:** 0.09
 - **Dependents:** 1
-- **Priority Score:** 1000904.9
-- **Functions:** 5/5 matched (target 21)
-- **Missing functions:** _none_
+- **Priority Score:** 1022009.1
+- **Functions:** 14/16 matched (target 21)
+- **Missing functions:** `from`, `from`
 - **Types:** 4/4 matched (target 25)
 - **Missing types:** _none_
 
 ### 2. util
 
 - **Target:** `age.Util`
-- **Similarity:** 0.48
+- **Similarity:** 0.07
 - **Dependents:** 0
-- **Priority Score:** 705.2
+- **Priority Score:** 709.3
 - **Functions:** 7/7 matched (target 19)
 - **Missing functions:** _none_
 - **Types:** 0/0 matched (target 3)
