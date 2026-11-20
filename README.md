@@ -233,7 +233,7 @@ conditions.
 
 ```kotlin
 dependencies {
-    implementation("io.github.kotlinmania:age-kotlin:0.1.4")
+    implementation("io.github.kotlinmania:age-kotlin:0.1.5")
 }
 ```
 
