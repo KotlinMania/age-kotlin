@@ -2,8 +2,7 @@
 
 package io.github.kotlinmania.age
 
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
+import io.github.kotlinmania.base64.prelude.BASE64_STANDARD_NO_PAD
 
 /**
  * Platform-independent line ending constant.
@@ -125,9 +124,6 @@ private fun convertBits(
  * Parsing helpers for reading age format fields.
  */
 internal object UtilRead {
-    @OptIn(ExperimentalEncodingApi::class)
-    private val base64NoPad = Base64.Default.withPadding(Base64.PaddingOption.ABSENT)
-
     /**
      * Decodes an unpadded base64 argument checking for exact expected byte length.
      *
@@ -138,13 +134,7 @@ internal object UtilRead {
     fun base64Arg(
         arg: String,
         expectedLength: Int,
-    ): ByteArray? =
-        try {
-            val decoded = base64NoPad.decode(arg)
-            if (decoded.size == expectedLength) decoded else null
-        } catch (_: IllegalArgumentException) {
-            null
-        }
+    ): ByteArray? = base64Arg(arg.encodeToByteArray(), expectedLength)
 
     /**
      * Decodes an unpadded base64 argument byte slice checking for exact expected byte length.
@@ -156,13 +146,12 @@ internal object UtilRead {
     fun base64Arg(
         arg: ByteArray,
         expectedLength: Int,
-    ): ByteArray? =
-        try {
-            val decoded = base64NoPad.decode(arg)
-            if (decoded.size == expectedLength) decoded else null
-        } catch (_: IllegalArgumentException) {
-            null
-        }
+    ): ByteArray? {
+        if (expectedLength < 0) return null
+        val buf = ByteArray(expectedLength + 1)
+        val decodedLen = BASE64_STANDARD_NO_PAD.decodeSlice(arg, buf).getOrNull() ?: return null
+        return if (decodedLen == expectedLength) buf.copyOf(expectedLength) else null
+    }
 
     /**
      * Parses a decimal number composed only of digits with no leading zeros.
@@ -218,12 +207,8 @@ internal object UtilRead {
         if (input.length < encodedCount) return null
         val dataStr = input.substring(0, encodedCount)
         val remaining = input.substring(encodedCount)
-        return try {
-            val decoded = base64NoPad.decode(dataStr)
-            Pair(remaining, decoded)
-        } catch (_: IllegalArgumentException) {
-            null
-        }
+        val decoded = BASE64_STANDARD_NO_PAD.decode(dataStr.encodeToByteArray()).getOrNull() ?: return null
+        return Pair(remaining, decoded)
     }
 
     /**
@@ -240,12 +225,8 @@ internal object UtilRead {
         if (end == 0) return null
         val dataStr = input.substring(0, end)
         val remaining = input.substring(end)
-        return try {
-            val decoded = base64NoPad.decode(dataStr)
-            Pair(remaining, decoded)
-        } catch (_: IllegalArgumentException) {
-            null
-        }
+        val decoded = BASE64_STANDARD_NO_PAD.decode(dataStr.encodeToByteArray()).getOrNull() ?: return null
+        return Pair(remaining, decoded)
     }
 
     /**
@@ -266,12 +247,8 @@ internal object UtilRead {
         if (joined.isEmpty()) return null
         val totalConsumed = lines.take(lineCount).joinToString("\n").length
         val remaining = if (totalConsumed < input.length) input.substring(totalConsumed) else ""
-        return try {
-            val decoded = base64NoPad.decode(joined.toString())
-            Pair(remaining, decoded)
-        } catch (_: IllegalArgumentException) {
-            null
-        }
+        val decoded = BASE64_STANDARD_NO_PAD.decode(joined.toString().encodeToByteArray()).getOrNull() ?: return null
+        return Pair(remaining, decoded)
     }
 
     private fun isBase64Char(c: Char): Boolean =
@@ -282,14 +259,11 @@ internal object UtilRead {
  * Serialization helpers for writing age format fields.
  */
 internal object UtilWrite {
-    @OptIn(ExperimentalEncodingApi::class)
-    private val base64NoPad = Base64.Default.withPadding(Base64.PaddingOption.ABSENT)
-
     /**
      * Encodes byte array as unpadded standard base64 string.
      *
      * @param data bytes to encode
      * @return unpadded base64 encoded string
      */
-    fun encodedData(data: ByteArray): String = base64NoPad.encode(data)
+    fun encodedData(data: ByteArray): String = BASE64_STANDARD_NO_PAD.encode(data)
 }

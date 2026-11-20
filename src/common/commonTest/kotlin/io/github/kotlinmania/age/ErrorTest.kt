@@ -1,5 +1,6 @@
 package io.github.kotlinmania.age
 
+import io.github.kotlinmania.digest.MacError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
@@ -70,5 +71,10 @@ class ErrorTest {
         assertSame(failure, DecryptError.Io(failure).source())
         assertEquals(null, EncryptError.MissingRecipients.source())
         assertEquals(null, DecryptError.NoMatchingKeys.source())
+    }
+
+    @Test
+    fun decryptErrorFromMacErrorMapsToInvalidMac() {
+        assertSame(DecryptError.InvalidMac, DecryptError.from(MacError()))
     }
 }

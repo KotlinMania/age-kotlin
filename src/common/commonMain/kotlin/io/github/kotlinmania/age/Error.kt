@@ -2,6 +2,8 @@
 
 package io.github.kotlinmania.age
 
+import io.github.kotlinmania.digest.MacError
+
 /**
  * Errors returned when converting an identity file to a recipients file.
  */
@@ -309,6 +311,9 @@ sealed class DecryptError {
 
         /** Lifts an I/O failure into a decryption error. */
         fun from(error: Any): DecryptError = Io(error)
+
+        /** Maps a header MAC failure into the age decryption error. */
+        fun from(error: MacError): DecryptError = InvalidMac
 
         /** Maps a header MAC failure into the age decryption error. */
         fun fromMacError(): DecryptError = InvalidMac
